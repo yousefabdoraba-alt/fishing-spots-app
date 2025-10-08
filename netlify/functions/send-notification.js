@@ -1,11 +1,11 @@
 const admin = require('firebase-admin');
 
-// بناء كائن serviceAccount من متغيرات البيئة
+// التهيئة (ستعمل كما هي)
 const serviceAccount = {
   type: process.env.FIREBASE_TYPE,
   project_id: process.env.FIREBASE_PROJECT_ID,
   private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-  private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
   client_email: process.env.FIREBASE_CLIENT_EMAIL,
   client_id: process.env.FIREBASE_CLIENT_ID,
   auth_uri: process.env.FIREBASE_AUTH_URI,
@@ -15,7 +15,6 @@ const serviceAccount = {
   universe_domain: "googleapis.com"
 };
 
-// تهيئة Firebase Admin (مرة واحدة فقط)
 let firebaseApp = null;
 
 try {
@@ -31,65 +30,48 @@ try {
   console.error('❌ Firebase initialization error:', error);
 }
 
-// دالة Netlify Function الرئيسية
-exports.handler = async (event, context) => {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS'
-  };
+// الدالة الرئيسية لـ Vercel Serverless
+module.exports = async (req, res) => {
+  // تعيين رؤوس CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
 
-  // التعامل مع طلبات CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
-  // وضع التحقق (Debug Mode)
-  if (event.httpMethod === 'GET') {
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        message: "🔍 Debug Mode - Check FCM Status",
-        status: "active",
-        firebase: firebaseApp ? "initialized" : "failed",
-        timestamp: new Date().toISOString()
-      })
-    };
+  if (req.method === 'GET') {
+    return res.json({
+      message: "🔍 Debug Mode - Check FCM Status",
+      status: "active",
+      firebase: firebaseApp ? "initialized" : "failed",
+      timestamp: new Date().toISOString()
+    });
   }
 
-  // إرسال إشعار عند استقبال POST
-  if (event.httpMethod === 'POST') {
+  if (req.method === 'POST') {
     try {
-      const body = JSON.parse(event.body);
-      const { record } = body;
-
+      const { record } = req.body;
       console.log('📨 Received:', record);
 
       if (!firebaseApp) {
-        return {
-          statusCode: 500,
-          headers,
-          body: JSON.stringify({ 
-            error: 'Firebase not initialized',
-            debug: 'Check Firebase credentials in Netlify Environment Variables'
-          })
-        };
+        return res.status(500).json({ 
+          error: 'Firebase not initialized'
+        });
       }
 
-      // رسالة الإشعار للموضوع
       const topicMessage = {
         topic: 'new_fishing_spots',
         notification: {
-          title: '🎣 موقع صيد 11111جديد!',
+          title: '🎣 موقع صيد جديد!',
           body: `تم إضافة: ${record.name} في ${record.city || 'موقع جديد'}`,
         },
         data: {
           spot_id: record.id?.toString() || '1',
           spot_name: record.name,
           city: record.city || 'غير محدد',
-          type: 'new_fishing_spot',
-          debug: 'topic_message'
+          type: 'new_fishing_spot'
         },
         android: {
           priority: 'high'
@@ -108,43 +90,22 @@ exports.handler = async (event, context) => {
       const topicResponse = await admin.messaging().send(topicMessage);
       console.log('✅ Topic message sent:', topicResponse);
 
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-          success: true,
-          message: '✅ Notifications sent',
-          topic_message_id: topicResponse,
-          spot: record.name,
-          debug: {
-            topic: 'new_fishing_spots',
-            timestamp: new Date().toISOString()
-          }
-        })
-      };
+      return res.json({
+        success: true,
+        message: '✅ Notifications sent',
+        topic_message_id: topicResponse,
+        spot: record.name,
+        timestamp: new Date().toISOString()
+      });
 
     } catch (error) {
       console.error('❌ FCM Error:', error);
-      
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ 
-          success: false,
-          error: error.message,
-          code: error.code,
-          details: 'Check FCM configuration and topic subscriptions'
-        })
-      };
+      return res.status(500).json({ 
+        success: false,
+        error: error.message
+      });
     }
   }
 
-  // رفض أي طريقة غير مدعومة
-  return {
-    statusCode: 405,
-    headers,
-    body: JSON.stringify({ error: 'Method not allowed' })
-  };
+  return res.status(405).json({ error: 'Method not allowed' });
 };
-
-
