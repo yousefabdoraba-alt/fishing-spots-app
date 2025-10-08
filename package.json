@@ -1,7 +1,10 @@
 {
-  "name": "fishing-spots-notifications",
+  "name": "fishing-notifications",
   "version": "1.0.0",
   "dependencies": {
     "firebase-admin": "^11.0.0"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
