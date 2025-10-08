@@ -112,7 +112,7 @@ exports.handler = async (event, context) => {
 وصف الموقع: ${record.description || 'لا يوجد وصف'}`;
 
       // === تحديد الصورة التي ستُعرض في الإشعار ===
-      const imageUrl = record.image_url || userAvatarUrl || 'https://hzznfexratskutwppdol.supabase.co/assets/default-fishing-icon.png';
+
 
       // === رسالة الإشعار الكاملة ===
       const topicMessage = {
@@ -120,7 +120,6 @@ exports.handler = async (event, context) => {
         notification: {
           title: '🎣 موقع صيد جديد!',
           body: detailedBody,
-          icon: 'https://hzznfexratskutwppdol.supabase.co/assets/fish-icon.png', // أيقونة صغيرة لشريط الحالة
           image: imageUrl // صورة داخل الإشعار
         },
         data: {
@@ -183,3 +182,4 @@ exports.handler = async (event, context) => {
     body: JSON.stringify({ error: 'Method not allowed' })
   };
 };
+
