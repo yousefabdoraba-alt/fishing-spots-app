@@ -81,7 +81,7 @@ exports.handler = async (event, context) => {
       const topicMessage = {
         topic: 'new_fishing_spots',
         notification: {
-          title: '🎣 موقع صيد جديد!',
+          title: '🎣 موقع صيد 11111جديد!',
           body: `تم إضافة: ${record.name} في ${record.city || 'موقع جديد'}`,
         },
         data: {
@@ -146,4 +146,5 @@ exports.handler = async (event, context) => {
     body: JSON.stringify({ error: 'Method not allowed' })
   };
 };
+
 
