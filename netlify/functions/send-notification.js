@@ -1,12 +1,10 @@
-
-
 const admin = require('firebase-admin');
 
 const serviceAccount = {
   "type": "service_account",
   "project_id": "libyan-fishing-guide",
-  "private_key_id": "66fc196be950d8534a134e0a1bc2c95b81cf62b3",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC4ucDURttbPgry\nVCjkxLR8qTSVPKoq7eTqmmSWhvvsvqiQ0SWMZidtfEBvx+xzRrEeVV3r1IkF4B8g\n8GF2fDZiAvJI8MCWLnKTaejRhW9OTsNv2mSEA7r1qyjRljUsrvEXysVaM0lAyHGz\nYG/cobRseZ0OpStk9V3X2mTmfiwiI+ZDCIJDf8xdQjX9klFQPpw+N+Nc7ETvfH0K\nHPXnyUoprwiubqOVepouAR9iofjXSBNRfNEecAjFcD/ID6Y+ZojCS7ncfPg/e7xZ\nOkGd4kgbJyKW1l7r2JdQFZzw1fBWdjwDuMaY68nBg6OQCJ9lJAKEnGa0HAPpxPG3\nfkf2CAIzAgMBAAECggEAAX8JAk8pSLBpy0kGOcV5cXG3aia0eXuKzqGog0BIUG8X\nk3C2PVBjLQkEG+5XynPoobEZp9GFY0Wg9ZXXhuuo+cXsq3g+acOqNup1Mc6YYQnU\nncEm7kYky1zzDDDgxmILtDXMFRfJlfDpsYUW8t0LxpMnmVjveeEI57jY92BPQDQx\ntdu5dlxeOrv0LiJEVAhQPXb6OQyE9CQXBkaqe+OUrUDV0VveSEnrkRMjcRUhJPQh\nQZFwCwnolsRRu2xEl0YrjAL/2JAnqaOmAWnngVYBVSWlXrB8Wj40H0I/umFeMVHv\npgR789bPte5k82Lq7+zyR7514ZIS/a9f85R2AF6PvQKBgQDiaJu89xpHoY2PfZnf\nMAqNrFZRU5eszrqBPYB2RPsU2P7WGG1sv8Le42JM1RwDEwTB99mFf0EkvIrbZgcj\nvhRy7mP1QAXbCjP8qsuyYE2WOfb7UJd5ajmjU5K/AvrB/CNVmq2eQNQiNVZH0Wc5\nDymnSH8/aPfv16I7nYw0fQvMPwKBgQDQ3nmjGOBe/LjznooGwkFEnBCAGYe2btzp\nDkSFehqI04kuO3265gRR64QhIpZ9FL+jzTTia4Yy4VCI6v7HCtg9cjmpAwaO4TeF\n8N3XD9doGcietpoGB2vRcUfL3MUfZHg1w7mW8oeYZm4JySSUTnqJ14bedQntH7Qg\nn1U4xNSdDQKBgQCRkqUgGNli2TMF4cI/yMngUcCmRdMuHzW3x22DndK6ktM3oTkq\nRRns6dLYh+Wc7GuQs+W+ehXOoxO9AZrxllPbmf/XPrUFI0hN2xths53vS5HMAQOD\n45LvutqNykKk25N0hSHAsPo0jIrPXoq6G0+y6WA3yywvoDwFjMULMqOVTQKBgHzx\nCCwS/mxzmqNIa+J9IxPKk2g9XVw41vambUC2+NZuS3oXZi991om2a3RyvziVR8nR\nP9hNX5piA43TnJIuH4oqIOnEAJFJkbASlHFIbZ89BTBDpMEEgW9o5vzA1D3iGLJ4\noTT1YT090IcUBkic5Vo9TdUWh9iLhXGaPh1WSKSlAoGACaElD/rdG+7NrPt/ItgJ\nIDGREEqkJGrtqpfiIC09bHROXU5Xzv8+olS51Q226CzqCIG9702iPNnBx/Tzp+Ti\nqQX/yZc3esLtNUzIx3By8nP2kGmOA3YoIa17gW6xAYjxME3O386cxGL/mzGcmnv6\nOQv75OktNwz/h2LK4fUMfYU=\n-----END PRIVATE KEY-----\n",
+  "private_key_id": "5c788f8da1051dad6b08ef20b568dde402d87b4c",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCp9h3k3R+ZUoSg\nkTzIVRUyYAW/C0e3RlYnTcysQKKJyZKh9DtEvGTFOnnUaggzj0izwgQCF2yynGBE\nHZoP7cWONcVVhaxjZV+4JngQwUEncx3uyyWDbI5A8HsNr4sHTwcSP7Vi+uS3E7U1\nDBh5Fq594/yr7oW13ybzfcMHb+GWcLVU4ChMICoiFirarKVhvFE00NF7+mdREPt/\nzCyKyboC/vYK9M7dBuWdLgmiFvwbO3dROwZzmDub074W62Y15TSQI3CDMR5okmIr\nGQciII7bzKgJC6ZM2/pdLP2LMkmrtl5T+j8XOJ/boh9cgCNre+CHs6shoL9RtJEY\n7knqip2VAgMBAAECggEADnnmBe5HmLmMjliQgsesbIP9OU5up0+YWvSncCx5K589\nnAm/WpVpR9s5MTxuwmV73cOyr7LrETN8h5C15JFt+DTgP+6IxlaGFptAMr0jHYcS\nj5pB8bW3UBSrhnjjMJYslgNTIcEY5fcJwiDrnLSv3A0lIkfIn7sICEk36VRANJ31\nX9M8Nj7CrORz8R1Vnl3wDPcOD+SG+TKCltSGRVCDCOzJienbSnqxA+WnQGSDNvuN\nShYaB8WGPAp5pupPk9mT72P50P4DATXHi6C64FRsmf0+6q/0pSzQ5Md51ag712iA\nyHKok6uea8fUDplxHbsJyaLBAD834i231Wu4Oxn3wQKBgQDbYobQo53vFjek3y15\ngM9aa1NW1W5wIPE4u0bjxGKAJjkEauFs6DVHp61W9O0aCMST8UIOI9PbQASFY4V5\nlXk5kC92YFTyg8/mTcqLWLLv+sWjSZ2zx6kDmX4axIIn2cAcfZEvYLQsjDSMPgIl\nYI+CmjhD7r+6W6u4c0vc0vKnOQKBgQDGU+osBZA43GWAf7QP6qst3xYPSm3uq5uB\nZi2L1QsHKkmjK25oowCaQ1hg8uJbWoYaDwI6iqyHLXTjVZEaeyENZE1xm3v0KVU0\n5dMAL9LXLZ+az3DpwTX81jG/OiolsGAY4qKd3n/zqKnYKs5a55pL60F/F7gDVnRA\n+dtnADHtPQKBgQCYLjdggS7sC5hbyOiNkTnE+hAcev8ZzvAlr1tUYgUF6f3BP7bR\nyh4zb3ABkvLqDUz3ZvKwRlAOldDNCqUrGvG1aXxS/C3Q8HiFxE6M7OFrMKRqSYWY\nkRZ/xbjBLrEunZDy8nOEzusMv9Evu0/Xx6ylJv+CuBnNVwu+blQggUALmQKBgF82\nlBq0RQv3S0eIh4KIr8ui6S1IF0TY4BwcWMtj6Rp0g8uxIx1a/AQTRs+sa11eNTk3\ncWN3heKTwSUOxE3JRRHv0Ho1IioS2dQ+bbEORJOHVLN22YdveaK7lkBvBSL47Pml\nfFp8IkNw+rFLw6vCusGt3NDOK0p26/LxwRJO9qklAoGAKBc3FU/pT+L+I+KUWhFe\ngSaDQ3C0PK/L5kT1lbzjr/pmwvPk3TxBBHMNpKy17WVDBig+HR4FCqkZqKg6ACok\noKFQfde9l6sifl8OA+DmvyQoBQYyR5Ke1qzzGgUahwq0/NTJiEf2NFL99lC2/vTS\nFMwCPrGzSLEwDjSpD4DfndE=\n-----END PRIVATE KEY-----\n",
   "client_email": "firebase-adminsdk-fbsvc@libyan-fishing-guide.iam.gserviceaccount.com",
   "client_id": "118099379101046874094",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -141,6 +139,4 @@ exports.handler = async (event, context) => {
     headers,
     body: JSON.stringify({ error: 'Method not allowed' })
   };
-
 };
-
