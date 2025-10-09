@@ -1,7 +1,7 @@
 {
-  "name": "fishing-comprehensive-notifications",
-  "version": "3.0.0",
-  "description": "Comprehensive fishing app notifications for all tables",
+  "name": "fishing-notifications-with-custom",
+  "version": "4.0.0",
+  "description": "Fishing app notifications with custom notifications support",
   "dependencies": {
     "firebase-admin": "^11.0.0",
     "@supabase/supabase-js": "^2.38.0"
