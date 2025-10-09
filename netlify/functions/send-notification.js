@@ -93,6 +93,16 @@ const buildNotification = async (table, action, record) => {
     };
   }
 
+  // ✅ دعم الإشعارات المخصصة
+  if (table === 'custom_notifications') {
+    return {
+      title: record.title_ar || 'إشعار جديد',
+      body: record.description_ar || '',
+      image: record.image_url || 'https://via.placeholder.com/400x200/6366F1/FFFFFF?text=📢+إشعار',
+      topic: record.target_topic || 'all_users'
+    };
+  }
+
   // === إشعارات الجداول الأخرى ===
   const configs = {
     'fish_articles': {
@@ -292,3 +302,4 @@ exports.handler = async (event, context) => {
     body: JSON.stringify({ error: 'Method not allowed' })
   };
 };
+
