@@ -47,53 +47,27 @@ const sendCustomNotification = async (notificationData) => {
       throw new Error('Title is required for custom notification');
     }
 
-    const message = {
-      topic: 'new_fishing_spots',
-      notification: {
-        title: title_ar,
-        body: description_ar || 'إشعار جديد من تطبيق الصيد',
-        image: image_url || 'https://via.placeholder.com/400x200/8B5CF6/FFFFFF?text=🔔+إشعار'
-      },
-      data: {
-        type: 'custom_notification',
-        title: title_ar,
-        description: description_ar || '',
-        image_url: image_url || '',
-        target_url: target_url || 'https://www.facebook.com',
-        // ⭐ إضافة حقول إضافية للتوافق
-        url: target_url || 'https://www.facebook.com',
-        click_action: 'OPEN_URL',
-        timestamp: new Date().toISOString()
-      },
-      android: {
-        priority: 'high',
-        notification: {
-          sound: 'default',
-          channel_id: 'fishing_app_channel',
-          click_action: 'OPEN_URL'
-        }
-      },
-      apns: {
-        payload: {
-          aps: {
-            sound: 'default',
-            badge: 1,
-            'mutable-content': 1
-          }
-        },
-        fcm_options: {
-          image: image_url
-        }
-      },
-      webpush: {
-        headers: {
-          image: image_url
-        },
-        fcm_options: {
-          link: target_url || 'https://www.facebook.com'
-        }
-      }
-    };
+// في دالة sendCustomNotification، تأكد من هذا الجزء:
+const message = {
+  topic: 'new_fishing_spots',
+  notification: {
+    title: title_ar,
+    body: description_ar || 'إشعار جديد من تطبيق الصيد',
+    image: image_url || 'https://via.placeholder.com/400x200/8B5CF6/FFFFFF?text=🔔+إشعار'
+  },
+  data: {
+    type: 'custom_notification',
+    title: title_ar,
+    description: description_ar || '',
+    image_url: image_url || '',
+    // ⭐ تأكد من إرسال target_url في data
+    target_url: target_url || 'https://www.facebook.com',
+    url: target_url || 'https://www.facebook.com', // ⭐ حقل إضافي
+    click_action: 'OPEN_URL',
+    timestamp: new Date().toISOString()
+  },
+  // ... باقي الإعدادات
+};
 
     console.log(`📤 Sending custom notification: "${title_ar}"`);
     console.log(`🔗 Target URL: ${target_url || 'Default Facebook URL'}`);
