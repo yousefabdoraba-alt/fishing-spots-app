@@ -107,7 +107,6 @@ const sendCustomNotification = async (notificationData) => {
         notification: {
           title: title_ar,
           body: description_ar || 'اضغط لفتح الرابط',
-          icon: '/icon.png',
           requireInteraction: true
         },
         fcm_options: {
@@ -192,3 +191,4 @@ exports.handler = async (event, context) => {
 
   return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
 };
+
