@@ -40,10 +40,10 @@ try {
 // === دالة خاصة للإشعارات المخصصة ===
 const sendCustomNotification = async (notificationData) => {
   try {
-    const { title_ar, description_ar, image_url } = notificationData;
+    const { title_ar, description_ar, image_url, target_url } = notificationData;
 
     const message = {
-      topic: 'new_fishing_spots', // ⭐ استخدام topic واحد للجميع
+      topic: 'new_fishing_spots',
       notification: {
         title: title_ar,
         body: description_ar || 'إشعار جديد من تطبيق الصيد',
@@ -54,13 +54,18 @@ const sendCustomNotification = async (notificationData) => {
         title: title_ar,
         description: description_ar || '',
         image_url: image_url || '',
+        // ⭐ الرابط الخارجي
+        target_url: target_url || 'https://www.facebook.com/YourFishingPage',
+        click_action: target_url || 'https://www.facebook.com/YourFishingPage',
         timestamp: new Date().toISOString()
       },
       android: {
         priority: 'high',
         notification: {
           sound: 'default',
-          channel_id: 'fishing_app_channel'
+          channel_id: 'fishing_app_channel',
+          // ⭐ فتح المتصفح للرابط الخارجي
+          click_action: 'OPEN_URL'
         }
       },
       apns: {
@@ -72,12 +77,25 @@ const sendCustomNotification = async (notificationData) => {
           }
         },
         fcm_options: {
+          image: image_url,
+          // ⭐ رابط خارجي لـ iOS
+          link: target_url || 'https://www.facebook.com/YourFishingPage'
+        }
+      },
+      webpush: {
+        headers: {
           image: image_url
+        },
+        // ⭐ رابط خارجي للويب
+        fcm_options: {
+          link: target_url || 'https://www.facebook.com/YourFishingPage'
         }
       }
     };
 
     console.log(`📤 Sending custom notification: ${title_ar}`);
+    console.log(`🔗 External URL: ${target_url || 'https://www.facebook.com/YourFishingPage'}`);
+    
     const response = await admin.messaging().send(message);
     console.log('✅ Custom notification sent successfully:', response);
 
@@ -96,8 +114,10 @@ const buildNotification = async (table, action, record) => {
       title: record.title_ar,
       body: record.description_ar || 'إشعار جديد من تطبيق الصيد',
       image: record.image_url || 'https://via.placeholder.com/400x200/8B5CF6/FFFFFF?text=🔔+إشعار',
-      topic: 'new_fishing_spots', // ⭐ استخدام topic واحد للجميع
-      isCustom: true
+      topic: 'new_fishing_spots',
+      isCustom: true,
+      // ⭐ رابط خارجي للإشعارات المخصصة
+      target_url: record.target_url || 'https://www.facebook.com/YourFishingPage'
     };
   }
 
@@ -151,7 +171,7 @@ const buildNotification = async (table, action, record) => {
       title: notificationTitle,
       body: notificationBody,
       image: imageUrl,
-      topic: 'new_fishing_spots' // ⭐ استخدام topic واحد للجميع
+      topic: 'new_fishing_spots'
     };
   }
 
@@ -162,13 +182,13 @@ const buildNotification = async (table, action, record) => {
         title: '🐟 مقال جديد عن الأسماك',
         body: `تعرف على سمكة: ${record.name}`,
         image: record.image_url,
-        topic: 'new_fishing_spots' // ⭐ استخدام topic واحد للجميع
+        topic: 'new_fishing_spots'
       },
       update: {
         title: '✏️ تم تحديث مقال الأسماك',
         body: `تم تحديث مقال: ${record.name}`,
         image: record.image_url,
-        topic: 'new_fishing_spots' // ⭐ استخدام topic واحد للجميع
+        topic: 'new_fishing_spots'
       }
     },
     'bait_articles': {
@@ -176,13 +196,13 @@ const buildNotification = async (table, action, record) => {
         title: '🪱 مقال جديد عن الطعوم',
         body: `تعرف على طعم: ${record.title_ar}`,
         image: record.image_url,
-        topic: 'new_fishing_spots' // ⭐ استخدام topic واحد للجميع
+        topic: 'new_fishing_spots'
       },
       update: {
         title: '✏️ تم تحديث مقال الطعوم',
         body: `تم تحديث مقال: ${record.title_ar}`,
         image: record.image_url,
-        topic: 'new_fishing_spots' // ⭐ استخدام topic واحد للجميع
+        topic: 'new_fishing_spots'
       }
     },
     'bait_categories': {
@@ -190,13 +210,13 @@ const buildNotification = async (table, action, record) => {
         title: '🪱 تمت إضافة نوع طعم جديد',
         body: `نوع الطعم: ${record.name_ar}`,
         image: record.image_url,
-        topic: 'new_fishing_spots' // ⭐ استخدام topic واحد للجميع
+        topic: 'new_fishing_spots'
       },
       update: {
         title: '✏️ تم تحديث نوع الطعم',
         body: `تم تحديث: ${record.name_ar}`,
         image: record.image_url,
-        topic: 'new_fishing_spots' // ⭐ استخدام topic واحد للجميع
+        topic: 'new_fishing_spots'
       }
     },
     'gear_articles': {
@@ -204,13 +224,13 @@ const buildNotification = async (table, action, record) => {
         title: '⚙️ مقال جديد عن معدات الصيد',
         body: `تعرف على معدة: ${record.title_ar}`,
         image: record.image_url,
-        topic: 'new_fishing_spots' // ⭐ استخدام topic واحد للجميع
+        topic: 'new_fishing_spots'
       },
       update: {
         title: '✏️ تم تحديث مقال المعدات',
         body: `تم تحديث مقال: ${record.title_ar}`,
         image: record.image_url,
-        topic: 'new_fishing_spots' // ⭐ استخدام topic واحد للجميع
+        topic: 'new_fishing_spots'
       }
     },
     'gear_categories': {
@@ -218,13 +238,13 @@ const buildNotification = async (table, action, record) => {
         title: '⚙️ تمت إضافة معدة صيد جديدة',
         body: `المعدة: ${record.name_ar}`,
         image: record.image_url,
-        topic: 'new_fishing_spots' // ⭐ استخدام topic واحد للجميع
+        topic: 'new_fishing_spots'
       },
       update: {
         title: '✏️ تم تحديث معدة الصيد',
         body: `تم تحديث: ${record.name_ar}`,
         image: record.image_url,
-        topic: 'new_fishing_spots' // ⭐ استخدام topic واحد للجميع
+        topic: 'new_fishing_spots'
       }
     }
   };
@@ -240,7 +260,10 @@ const buildNotification = async (table, action, record) => {
     'gear_categories': 'https://via.placeholder.com/400x200/EF4444/FFFFFF?text=⚙️+معدة'
   };
 
-  return { ...config, image: config.image || defaults[table] };
+  return { 
+    ...config, 
+    image: config.image || defaults[table]
+  };
 };
 
 // === دالة Netlify Function الرئيسية ===
@@ -264,7 +287,7 @@ exports.handler = async (event, context) => {
         status: "active",
         firebase: firebaseApp ? "initialized" : "failed",
         supabase: "connected",
-        topic: "new_fishing_spots", // ⭐ Topic واحد للجميع
+        topic: "new_fishing_spots",
         supported_tables: [
           'fishing_spots', 'fish_articles', 'bait_articles',
           'bait_categories', 'gear_articles', 'gear_categories',
@@ -317,6 +340,7 @@ exports.handler = async (event, context) => {
             table: table,
             action: action,
             topic: 'new_fishing_spots',
+            target_url: record.target_url,
             timestamp: new Date().toISOString()
           })
         };
@@ -326,7 +350,7 @@ exports.handler = async (event, context) => {
       const config = await buildNotification(table, action, record);
 
       const message = {
-        topic: 'new_fishing_spots', // ⭐ استخدام topic واحد للجميع
+        topic: 'new_fishing_spots',
         notification: {
           title: config.title,
           body: config.body,
