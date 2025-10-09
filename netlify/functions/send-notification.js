@@ -59,8 +59,10 @@ const sendCustomNotification = async (notificationData) => {
         title: title_ar,
         description: description_ar || '',
         image_url: image_url || '',
-        target_url: target_url || 'https://www.facebook.com/groups/yourfishinggroup',
-        click_action: target_url || 'https://www.facebook.com/groups/yourfishinggroup',
+        target_url: target_url || 'https://www.facebook.com',
+        // ⭐ إضافة حقول إضافية للتوافق
+        url: target_url || 'https://www.facebook.com',
+        click_action: 'OPEN_URL',
         timestamp: new Date().toISOString()
       },
       android: {
@@ -81,7 +83,6 @@ const sendCustomNotification = async (notificationData) => {
         },
         fcm_options: {
           image: image_url
-          // ⭐ تم إزالة حقل 'link' لأنه غير معترف به
         }
       },
       webpush: {
@@ -89,7 +90,7 @@ const sendCustomNotification = async (notificationData) => {
           image: image_url
         },
         fcm_options: {
-          link: target_url || 'https://www.facebook.com/groups/yourfishinggroup'
+          link: target_url || 'https://www.facebook.com'
         }
       }
     };
@@ -122,7 +123,7 @@ const buildNotification = async (table, action, record) => {
       image: record.image_url || 'https://via.placeholder.com/400x200/8B5CF6/FFFFFF?text=🔔+إشعار',
       topic: 'new_fishing_spots',
       isCustom: true,
-      target_url: record.target_url || 'https://www.facebook.com/groups/yourfishinggroup'
+      target_url: record.target_url || 'https://www.facebook.com'
     };
   }
 
@@ -283,7 +284,7 @@ exports.handler = async (event, context) => {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        message: "🔍 نظام إشعارات الصيد - الإصدار المصلح",
+        message: "🔍 نظام إشعارات الصيد - الإصدار المحسن",
         status: "active",
         firebase: firebaseApp ? "initialized" : "failed",
         supabase: "connected",
