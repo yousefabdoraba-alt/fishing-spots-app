@@ -1,7 +1,7 @@
 const admin = require('firebase-admin');
 const { createClient } = require('@supabase/supabase-js');
 
-// الإعدادات
+// === الإعدادات ===
 const serviceAccount = {
   type: process.env.FIREBASE_TYPE,
   project_id: process.env.FIREBASE_PROJECT_ID,
@@ -27,7 +27,7 @@ try {
     firebaseApp = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });
-    console.log('✅ Firebase initialized');
+    console.log('✅ Firebase & Supabase initialized successfully');
   } else {
     firebaseApp = admin.app();
   }
@@ -35,70 +35,59 @@ try {
   console.error('❌ Initialization error:', error);
 }
 
-// دالة الإشعارات المخصصة - الإصدار المصحح
+// === دالة محسنة للإشعارات المخصصة ===
 const sendCustomNotification = async (notificationData) => {
   try {
+    console.log('🎯 Starting custom notification process...');
+    
     const { title_ar, description_ar, image_url, target_url } = notificationData;
 
-    if (!title_ar) throw new Error('Title required');
+    // التأكد من وجود البيانات المطلوبة
+    if (!title_ar) {
+      throw new Error('Title is required for custom notification');
+    }
 
-    // ⭐⭐ الإصدار المصحح: استخدام notification مع data بشكل صحيح
     const message = {
       topic: 'new_fishing_spots',
-      
-      // ⭐ الإشعار الرئيسي الذي يظهر للمستخدم
       notification: {
         title: title_ar,
-        body: description_ar || 'اضغط لفتح الرابط',
-        // ⭐ إضافة صورة إذا كانت متوفرة
-        ...(image_url && { image: image_url })
+        body: description_ar || 'إشعار جديد من تطبيق الصيد',
+        image: image_url || 'https://via.placeholder.com/400x200/8B5CF6/FFFFFF?text=🔔+إشعار'
       },
-      
-      // ⭐ البيانات التي يقرأها التطبيق
       data: {
-        // ⭐ الرابط المستهدف - هذا هو الأهم
-        target_url: target_url || 'https://www.facebook.com',
-        direct_link: 'true',
-        action: 'open_browser',
-        
-        // ⭐ معلومات إضافية
-        type: 'external_link',
-        timestamp: new Date().toISOString(),
+        type: 'custom_notification',
         title: title_ar,
-        message: description_ar || 'إشعار جديد'
+        description: description_ar || '',
+        image_url: image_url || '',
+        target_url: target_url || 'https://www.facebook.com',
+        // ⭐ إضافة حقول إضافية للتوافق
+        url: target_url || 'https://www.facebook.com',
+        click_action: 'OPEN_URL',
+        timestamp: new Date().toISOString()
       },
-      
-      // ⭐ إعدادات Android المصححة
       android: {
         priority: 'high',
         notification: {
           sound: 'default',
           channel_id: 'fishing_app_channel',
-          // ⭐ هذا يخبر النظام بفتح الرابط مباشرة
           click_action: 'OPEN_URL'
         }
       },
-      
-      // ⭐ إعدادات iOS المصححة
       apns: {
         payload: {
           aps: {
             sound: 'default',
             badge: 1,
-            alert: {
-              title: title_ar,
-              body: description_ar || 'اضغط لفتح الرابط'
-            }
+            'mutable-content': 1
           }
+        },
+        fcm_options: {
+          image: image_url
         }
       },
-      
-      // ⭐ إعدادات Web
       webpush: {
-        notification: {
-          title: title_ar,
-          body: description_ar || 'اضغط لفتح الرابط',
-          requireInteraction: true
+        headers: {
+          image: image_url
         },
         fcm_options: {
           link: target_url || 'https://www.facebook.com'
@@ -106,82 +95,158 @@ const sendCustomNotification = async (notificationData) => {
       }
     };
 
-    console.log(`📤 Sending notification: "${title_ar}"`);
-    console.log(`🔗 Target URL: ${target_url}`);
+    console.log(`📤 Sending custom notification: "${title_ar}"`);
+    console.log(`🔗 Target URL: ${target_url || 'Default Facebook URL'}`);
     
     const response = await admin.messaging().send(message);
-    console.log('✅ Notification sent successfully');
+    console.log('✅ Custom notification sent successfully!');
+    console.log('📨 Message ID:', response);
 
     return response;
   } catch (error) {
-    console.error('❌ Notification error:', error);
+    console.error('❌ Custom notification error:', error);
+    console.error('🔍 Error details:', {
+      code: error.code,
+      message: error.message
+    });
     throw error;
   }
 };
 
-// دالة بناء الإشعارات للجداول الأخرى (نفس الكود السابق)
+// === بناء الإشعارات حسب الجدول ===
 const buildNotification = async (table, action, record) => {
+  // 🔔 معالجة الإشعارات المخصصة
   if (table === 'custom_notifications' && action === 'create') {
     return {
       title: record.title_ar,
       body: record.description_ar || 'إشعار جديد من تطبيق الصيد',
-      image: record.image_url,
+      image: record.image_url || 'https://via.placeholder.com/400x200/8B5CF6/FFFFFF?text=🔔+إشعار',
       topic: 'new_fishing_spots',
       isCustom: true,
       target_url: record.target_url || 'https://www.facebook.com'
     };
   }
 
-  // ... باقي الجداول (نفس الكود السابق)
   if (table === 'fishing_spots') {
     let userName = 'مستخدم مجهول';
+    let userAvatarUrl = null;
+    let notificationTitle = '';
+    let notificationBody = '';
+
     try {
       if (record.user_id) {
-        const { data: user } = await supabase
+        const { data: user, error: userError } = await supabase
           .from('users')
           .select('name, avatar_url')
           .eq('id', record.user_id)
           .single();
-        if (user) userName = user.name || 'مستخدم مجهول';
+
+        if (!userError && user) {
+          userName = user.name || 'مستخدم مجهول';
+          userAvatarUrl = user.avatar_url;
+        }
+      }
+
+      switch (action) {
+        case 'create':
+          notificationTitle = '📍 موقع صيد جديد!';
+          notificationBody = `تمت إضافة موقع جديد\nمن قبل: ${userName}\nفي مدينة: ${record.city || 'غير محددة'}\nاسم الموقع: ${record.name}\nوصف الموقع: ${record.description || 'لا يوجد وصف'}`;
+          break;
+        case 'update':
+          notificationTitle = '✏️ تم تحديث موقع الصيد';
+          notificationBody = `تم تحديث موقع الصيد\nمن قبل: ${userName}\nالمكان: ${record.name}\nالمدينة: ${record.city || 'غير محددة'}`;
+          break;
+        default:
+          notificationTitle = '📍 موقع صيد جديد!';
+          notificationBody = `تمت إضافة موقع جديد\nمن قبل: ${userName}\nفي مدينة: ${record.city || 'غير محددة'}\nاسم الموقع: ${record.name}`;
       }
     } catch (e) {
-      console.warn('User fetch failed:', e.message);
+      console.warn('⚠️ Supabase fetch failed:', e.message);
+      notificationTitle = '📍 موقع صيد جديد!';
+      notificationBody = `تمت إضافة موقع جديد: ${record.name}\nالمدينة: ${record.city || 'غير محددة'}`;
     }
 
-    const notificationTitle = action === 'create' ? '📍 موقع صيد جديد!' : '✏️ تم تحديث موقع الصيد';
-    const notificationBody = action === 'create' 
-      ? `تمت إضافة موقع جديد\nمن قبل: ${userName}\nفي مدينة: ${record.city || 'غير محددة'}\nاسم الموقع: ${record.name}`
-      : `تم تحديث موقع الصيد\nمن قبل: ${userName}\nالمكان: ${record.name}`;
+    const imageUrl = record.image_url || userAvatarUrl || 'https://via.placeholder.com/400x200/4F46E5/FFFFFF?text=🎣+موقع+صيد';
 
     return {
       title: notificationTitle,
       body: notificationBody,
-      image: record.image_url || 'https://via.placeholder.com/400x200/4F46E5/FFFFFF?text=🎣+موقع+صيد',
+      image: imageUrl,
       topic: 'new_fishing_spots'
     };
   }
 
-  // الجداول الأخرى
+  // === إشعارات الجداول الأخرى ===
   const configs = {
     'fish_articles': {
-      create: { title: '🐟 مقال جديد عن الأسماك', body: `تعرف على سمكة: ${record.name}` },
-      update: { title: '✏️ تم تحديث مقال الأسماك', body: `تم تحديث مقال: ${record.name}` }
+      create: {
+        title: '🐟 مقال جديد عن الأسماك',
+        body: `تعرف على سمكة: ${record.name}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      },
+      update: {
+        title: '✏️ تم تحديث مقال الأسماك',
+        body: `تم تحديث مقال: ${record.name}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      }
     },
     'bait_articles': {
-      create: { title: '🪱 مقال جديد عن الطعوم', body: `تعرف على طعم: ${record.title_ar}` },
-      update: { title: '✏️ تم تحديث مقال الطعوم', body: `تم تحديث مقال: ${record.title_ar}` }
+      create: {
+        title: '🪱 مقال جديد عن الطعوم',
+        body: `تعرف على طعم: ${record.title_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      },
+      update: {
+        title: '✏️ تم تحديث مقال الطعوم',
+        body: `تم تحديث مقال: ${record.title_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      }
     },
     'bait_categories': {
-      create: { title: '🪱 تمت إضافة نوع طعم جديد', body: `نوع الطعم: ${record.name_ar}` },
-      update: { title: '✏️ تم تحديث نوع الطعم', body: `تم تحديث: ${record.name_ar}` }
+      create: {
+        title: '🪱 تمت إضافة نوع طعم جديد',
+        body: `نوع الطعم: ${record.name_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      },
+      update: {
+        title: '✏️ تم تحديث نوع الطعم',
+        body: `تم تحديث: ${record.name_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      }
     },
     'gear_articles': {
-      create: { title: '⚙️ مقال جديد عن معدات الصيد', body: `تعرف على معدة: ${record.title_ar}` },
-      update: { title: '✏️ تم تحديث مقال المعدات', body: `تم تحديث مقال: ${record.title_ar}` }
+      create: {
+        title: '⚙️ مقال جديد عن معدات الصيد',
+        body: `تعرف على معدة: ${record.title_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      },
+      update: {
+        title: '✏️ تم تحديث مقال المعدات',
+        body: `تم تحديث مقال: ${record.title_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      }
     },
     'gear_categories': {
-      create: { title: '⚙️ تمت إضافة معدة صيد جديدة', body: `المعدة: ${record.name_ar}` },
-      update: { title: '✏️ تم تحديث معدة الصيد', body: `تم تحديث: ${record.name_ar}` }
+      create: {
+        title: '⚙️ تمت إضافة معدة صيد جديدة',
+        body: `المعدة: ${record.name_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      },
+      update: {
+        title: '✏️ تم تحديث معدة الصيد',
+        body: `تم تحديث: ${record.name_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      }
     }
   };
 
@@ -198,12 +263,11 @@ const buildNotification = async (table, action, record) => {
 
   return { 
     ...config, 
-    image: record.image_url || defaults[table],
-    topic: 'new_fishing_spots'
+    image: config.image || defaults[table]
   };
 };
 
-// دالة Netlify الرئيسية المصححة
+// === دالة Netlify Function الرئيسية ===
 exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -219,10 +283,12 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ 
-        message: "نظام الإشعارات المصحح",
+      body: JSON.stringify({
+        message: "🔍 نظام إشعارات الصيد - الإصدار المحسن",
         status: "active",
-        firebase: firebaseApp ? "initialized" : "failed"
+        firebase: firebaseApp ? "initialized" : "failed",
+        supabase: "connected",
+        timestamp: new Date().toISOString()
       })
     };
   }
@@ -230,32 +296,50 @@ exports.handler = async (event, context) => {
   if (event.httpMethod === 'POST') {
     try {
       const body = JSON.parse(event.body || '{}');
-      const { record, action = 'create', table = 'custom_notifications' } = body;
+      const { record, action = 'create', table } = body;
 
-      console.log('📨 Received:', { table, action, record_id: record?.id });
+      console.log('📨 Received request:', { 
+        table: table || 'unknown', 
+        action: action,
+        record_id: record?.id 
+      });
 
-      if (!firebaseApp) throw new Error('Firebase not initialized');
-      if (!record) throw new Error('Missing record data');
+      if (!firebaseApp) {
+        throw new Error('Firebase not initialized');
+      }
 
-      // معالجة الإشعارات المخصصة
+      if (!record) {
+        throw new Error('Missing record data');
+      }
+
+      if (!table) {
+        throw new Error('Missing table name');
+      }
+
+      // 🔔 معالجة الإشعارات المخصصة
       if (table === 'custom_notifications' && action === 'create') {
         console.log('🎯 Processing custom notification...');
         
         const response = await sendCustomNotification(record);
         
-        // تحديث قاعدة البيانات
+        // تحديث حالة الإرسال في قاعدة البيانات
         if (record.id) {
           try {
-            await supabase
+            const { error: updateError } = await supabase
               .from('custom_notifications')
               .update({ 
                 is_sent: true, 
                 sent_at: new Date().toISOString() 
               })
               .eq('id', record.id);
-            console.log('✅ Database updated');
+
+            if (updateError) {
+              console.warn('⚠️ Could not update notification status:', updateError.message);
+            } else {
+              console.log('✅ Notification status updated in database');
+            }
           } catch (dbError) {
-            console.warn('⚠️ Database update warning:', dbError.message);
+            console.warn('⚠️ Database update error:', dbError.message);
           }
         }
 
@@ -264,30 +348,35 @@ exports.handler = async (event, context) => {
           headers,
           body: JSON.stringify({
             success: true,
-            message: '✅ تم إرسال الإشعار بنجاح',
+            message: '✅ تم إرسال الإشعار المخصص بنجاح',
             notification_id: response,
-            target_url: record.target_url
+            type: 'custom',
+            table: table,
+            action: action,
+            target_url: record.target_url,
+            timestamp: new Date().toISOString()
           })
         };
       }
 
-      // الإشعارات العادية
+      // للإشعارات العادية
       const config = await buildNotification(table, action, record);
 
       const message = {
-        topic: config.topic,
+        topic: 'new_fishing_spots',
         notification: {
           title: config.title,
           body: config.body,
-          ...(config.image && { image: config.image })
+          image: config.image
         },
         data: {
           table: table,
           action: action,
           item_id: record.id?.toString() || '1',
           item_name: record.name || record.title_ar || record.name_ar || 'غير محدد',
-          ...(config.image && { image_url: config.image }),
-          timestamp: new Date().toISOString()
+          image_url: config.image,
+          timestamp: new Date().toISOString(),
+          notification_type: 'auto'
         },
         android: {
           priority: 'high',
@@ -295,30 +384,46 @@ exports.handler = async (event, context) => {
             sound: 'default',
             channel_id: 'fishing_app_channel'
           }
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: 'default',
+              badge: 1,
+              'mutable-content': 1
+            }
+          },
+          fcm_options: { image: config.image }
         }
       };
 
-      console.log(`📤 Sending ${table} notification`);
+      console.log(`📤 Sending ${action} notification for ${table}`);
       const response = await admin.messaging().send(message);
+      console.log('✅ Notification sent:', response);
 
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           success: true,
-          message: `✅ تم إرسال إشعار ${table}`,
-          notification_id: response
+          message: `✅ Notification sent for ${table}`,
+          notification_id: response,
+          table: table,
+          action: action,
+          timestamp: new Date().toISOString()
         })
       };
 
     } catch (error) {
-      console.error('❌ Error:', error);
+      console.error('❌ Notification processing error:', error);
+      
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ 
-          success: false, 
-          error: error.message 
+        body: JSON.stringify({
+          success: false,
+          error: error.message,
+          details: 'Check function logs for more information'
         })
       };
     }
