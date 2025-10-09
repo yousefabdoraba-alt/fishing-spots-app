@@ -37,70 +37,8 @@ try {
   console.error('❌ Initialization error:', error);
 }
 
-// === دالة خاصة للإشعارات المخصصة ===
-const sendCustomNotification = async (notificationData) => {
-  try {
-    const { title_ar, description_ar, image_url, target_topic = 'all_users' } = notificationData;
-
-    const message = {
-      topic: target_topic,
-      notification: {
-        title: title_ar,
-        body: description_ar || 'إشعار جديد من تطبيق الصيد',
-        image: image_url || 'https://via.placeholder.com/400x200/8B5CF6/FFFFFF?text=🔔+إشعار'
-      },
-      data: {
-        type: 'custom_notification',
-        title: title_ar,
-        description: description_ar || '',
-        image_url: image_url || '',
-        timestamp: new Date().toISOString()
-      },
-      android: {
-        priority: 'high',
-        notification: {
-          sound: 'default',
-          channel_id: 'custom_notifications_channel'
-        }
-      },
-      apns: {
-        payload: {
-          aps: {
-            sound: 'default',
-            badge: 1,
-            'mutable-content': 1
-          }
-        },
-        fcm_options: {
-          image: image_url
-        }
-      }
-    };
-
-    console.log(`📤 Sending custom notification: ${title_ar}`);
-    const response = await admin.messaging().send(message);
-    console.log('✅ Custom notification sent successfully:', response);
-
-    return response;
-  } catch (error) {
-    console.error('❌ Custom notification error:', error);
-    throw error;
-  }
-};
-
 // === بناء الإشعارات حسب الجدول ===
 const buildNotification = async (table, action, record) => {
-  // 🔔 معالجة الإشعارات المخصصة
-  if (table === 'custom_notifications' && action === 'create') {
-    return {
-      title: record.title_ar,
-      body: record.description_ar || 'إشعار جديد من تطبيق الصيد',
-      image: record.image_url || 'https://via.placeholder.com/400x200/8B5CF6/FFFFFF?text=🔔+إشعار',
-      topic: record.target_topic || 'all_users',
-      isCustom: true // علامة أن هذا إشعار مخصص
-    };
-  }
-
   if (table === 'fishing_spots') {
     // إشعارات مواقع الصيد — النسخة المفصلة
     let userName = 'مستخدم مجهول';
@@ -235,9 +173,7 @@ const buildNotification = async (table, action, record) => {
   const defaults = {
     'fish_articles': 'https://via.placeholder.com/400x200/10B981/FFFFFF?text=🐟+سمكة',
     'bait_articles': 'https://via.placeholder.com/400x200/F59E0B/FFFFFF?text=🪱+طعم',
-    'bait_categories': 'https://via.placeholder.com/400x200/F59E0B/FFFFFF?text=🪱+طعم',
-    'gear_articles': 'https://via.placeholder.com/400x200/EF4444/FFFFFF?text=⚙️+معدة',
-    'gear_categories': 'https://via.placeholder.com/400x200/EF4444/FFFFFF?text=⚙️+معدة'
+    'gear_articles': 'https://via.placeholder.com/400x200/EF4444/FFFFFF?text=⚙️+معدة'
   };
 
   return { ...config, image: config.image || defaults[table] };
@@ -266,8 +202,7 @@ exports.handler = async (event, context) => {
         supabase: "connected",
         supported_tables: [
           'fishing_spots', 'fish_articles', 'bait_articles',
-          'bait_categories', 'gear_articles', 'gear_categories',
-          'custom_notifications' // 🔔 تمت الإضافة
+          'bait_categories', 'gear_articles', 'gear_categories'
         ],
         timestamp: new Date().toISOString()
       })
@@ -285,42 +220,6 @@ exports.handler = async (event, context) => {
       if (!record) throw new Error('Missing record data');
       if (!table) throw new Error('Missing table name');
 
-      // 🔔 معالجة الإشعارات المخصصة بشكل منفصل
-      if (table === 'custom_notifications' && action === 'create') {
-        const response = await sendCustomNotification(record);
-        
-        // تحديث حالة الإشعار في قاعدة البيانات إذا كان له ID
-        if (record.id) {
-          try {
-            await supabase
-              .from('custom_notifications')
-              .update({ 
-                is_sent: true, 
-                sent_at: new Date().toISOString() 
-              })
-              .eq('id', record.id);
-            console.log('✅ Custom notification status updated in database');
-          } catch (dbError) {
-            console.warn('⚠️ Could not update notification status:', dbError.message);
-          }
-        }
-
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({
-            success: true,
-            message: '✅ Custom notification sent successfully',
-            notification_id: response,
-            type: 'custom',
-            table: table,
-            action: action,
-            timestamp: new Date().toISOString()
-          })
-        };
-      }
-
-      // الإشعارات العادية
       const config = await buildNotification(table, action, record);
 
       const message = {
@@ -336,15 +235,13 @@ exports.handler = async (event, context) => {
           item_id: record.id?.toString() || '1',
           item_name: record.name || record.title_ar || record.name_ar || 'غير محدد',
           image_url: config.image,
-          timestamp: new Date().toISOString(),
-          // إضافة نوع الإشعار للتمييز
-          notification_type: config.isCustom ? 'custom' : 'auto'
+          timestamp: new Date().toISOString()
         },
         android: {
           priority: 'high',
           notification: {
             sound: 'default',
-            channel_id: config.isCustom ? 'custom_notifications_channel' : 'fishing_app_channel'
+            channel_id: 'fishing_app_channel'
           }
         },
         apns: {
