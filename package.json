@@ -1,7 +1,7 @@
 {
-  "name": "fishing-spots-notifications",
-  "version": "2.0.0",
-  "description": "Enhanced fishing spots notifications with Supabase integration",
+  "name": "fishing-comprehensive-notifications",
+  "version": "3.0.0",
+  "description": "Comprehensive fishing app notifications for all tables",
   "dependencies": {
     "firebase-admin": "^11.0.0",
     "@supabase/supabase-js": "^2.38.0"
