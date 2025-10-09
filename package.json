@@ -1,7 +1,7 @@
 {
-  "name": "fishing-notifications-with-custom",
-  "version": "4.0.0",
-  "description": "Fishing app notifications with custom notifications support",
+  "name": "fishing-notifications-unified",
+  "version": "5.0.0",
+  "description": "Fishing app notifications with unified topic",
   "dependencies": {
     "firebase-admin": "^11.0.0",
     "@supabase/supabase-js": "^2.38.0"
