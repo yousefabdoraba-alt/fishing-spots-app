@@ -1,7 +1,7 @@
 const admin = require('firebase-admin');
 const { createClient } = require('@supabase/supabase-js');
 
-// بناء كائن serviceAccount من متغيرات البيئة
+// === إعداد بيانات Firebase ===
 const serviceAccount = {
   type: process.env.FIREBASE_TYPE,
   project_id: process.env.FIREBASE_PROJECT_ID,
@@ -16,164 +16,232 @@ const serviceAccount = {
   universe_domain: "googleapis.com"
 };
 
-// تهيئة Supabase
+// === إعداد Supabase ===
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://hzznfexratskutwppdol.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6em5mZXhyYXRza3V0d3BwZG9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MzY4NzAsImV4cCI6MjA3MzAxMjg3MH0.Ui3semM9P8-p8GMEgiVXPcdtFEJ6GncIcUY0coyZClE';
+const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// تهيئة Firebase Admin (مرة واحدة فقط)
+// === تهيئة Firebase Admin ===
 let firebaseApp = null;
-
 try {
   if (admin.apps.length === 0) {
     firebaseApp = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
     });
-    console.log('✅ Firebase initialized successfully');
-    console.log('✅ Supabase initialized successfully');
+    console.log('✅ Firebase & Supabase initialized successfully');
   } else {
     firebaseApp = admin.app();
   }
 } catch (error) {
-  console.error('❌ Firebase initialization error:', error);
+  console.error('❌ Initialization error:', error);
 }
 
-// دالة Netlify Function الرئيسية
+// === بناء الإشعارات حسب الجدول ===
+const buildNotification = async (table, action, record) => {
+  if (table === 'fishing_spots') {
+    // إشعارات مواقع الصيد — النسخة المفصلة
+    let userName = 'مستخدم مجهول';
+    let userAvatarUrl = null;
+    let notificationTitle = '';
+    let notificationBody = '';
+
+    try {
+      if (record.user_id) {
+        const { data: user, error: userError } = await supabase
+          .from('users')
+          .select('name, avatar_url')
+          .eq('id', record.user_id)
+          .single();
+
+        if (!userError && user) {
+          userName = user.name || 'مستخدم مجهول';
+          userAvatarUrl = user.avatar_url;
+        }
+      }
+
+      switch (action) {
+        case 'create':
+          notificationTitle = '📍 موقع صيد جديد!';
+          notificationBody = `تمت إضافة موقع جديد\nمن قبل: ${userName}\nفي مدينة: ${record.city || 'غير محددة'}\nاسم الموقع: ${record.name}\nوصف الموقع: ${record.description || 'لا يوجد وصف'}`;
+          break;
+        case 'update':
+          notificationTitle = '✏️ تم تحديث موقع الصيد';
+          notificationBody = `تم تحديث موقع الصيد\nمن قبل: ${userName}\nالمكان: ${record.name}\nالمدينة: ${record.city || 'غير محددة'}`;
+          break;
+        case 'delete':
+          notificationTitle = '🗑️ تم حذف موقع الصيد';
+          notificationBody = `تم حذف موقع الصيد\nمن قبل: ${userName}\nالمكان: ${record.name}`;
+          break;
+        default:
+          notificationTitle = '📍 موقع صيد جديد!';
+          notificationBody = `تمت إضافة موقع جديد\nمن قبل: ${userName}\nفي مدينة: ${record.city || 'غير محددة'}\nاسم الموقع: ${record.name}`;
+      }
+    } catch (e) {
+      console.warn('⚠️ Supabase fetch failed:', e.message);
+      notificationTitle = '📍 موقع صيد جديد!';
+      notificationBody = `تمت إضافة موقع جديد: ${record.name}\nالمدينة: ${record.city || 'غير محددة'}`;
+    }
+
+    const imageUrl = record.image_url || userAvatarUrl || 'https://via.placeholder.com/400x200/4F46E5/FFFFFF?text=🎣+موقع+صيد';
+
+    return {
+      title: notificationTitle,
+      body: notificationBody,
+      image: imageUrl,
+      topic: 'new_fishing_spots'
+    };
+  }
+
+  // === إشعارات الجداول الأخرى ===
+  const configs = {
+    'fish_articles': {
+      create: {
+        title: '🐟 مقال جديد عن الأسماك',
+        body: `تعرف على سمكة: ${record.name}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      },
+      update: {
+        title: '✏️ تم تحديث مقال الأسماك',
+        body: `تم تحديث مقال: ${record.name}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      }
+    },
+    'bait_articles': {
+      create: {
+        title: '🪱 مقال جديد عن الطعوم',
+        body: `تعرف على طعم: ${record.title_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      },
+      update: {
+        title: '✏️ تم تحديث مقال الطعوم',
+        body: `تم تحديث مقال: ${record.title_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      }
+    },
+    'bait_categories': {
+      create: {
+        title: '🪱 تمت إضافة نوع طعم جديد',
+        body: `نوع الطعم: ${record.name_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      },
+      update: {
+        title: '✏️ تم تحديث نوع الطعم',
+        body: `تم تحديث: ${record.name_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      }
+    },
+    'gear_articles': {
+      create: {
+        title: '⚙️ مقال جديد عن معدات الصيد',
+        body: `تعرف على معدة: ${record.title_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      },
+      update: {
+        title: '✏️ تم تحديث مقال المعدات',
+        body: `تم تحديث مقال: ${record.title_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      }
+    },
+    'gear_categories': {
+      create: {
+        title: '⚙️ تمت إضافة معدة صيد جديدة',
+        body: `المعدة: ${record.name_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      },
+      update: {
+        title: '✏️ تم تحديث معدة الصيد',
+        body: `تم تحديث: ${record.name_ar}`,
+        image: record.image_url,
+        topic: 'new_fishing_spots'
+      }
+    }
+  };
+
+  const config = configs[table]?.[action];
+  if (!config) throw new Error(`No config for table: ${table}, action: ${action}`);
+
+  const defaults = {
+    'fish_articles': 'https://via.placeholder.com/400x200/10B981/FFFFFF?text=🐟+سمكة',
+    'bait_articles': 'https://via.placeholder.com/400x200/F59E0B/FFFFFF?text=🪱+طعم',
+    'gear_articles': 'https://via.placeholder.com/400x200/EF4444/FFFFFF?text=⚙️+معدة'
+  };
+
+  return { ...config, image: config.image || defaults[table] };
+};
+
+// === دالة Netlify Function الرئيسية ===
 exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE'
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS'
   };
 
-  // التعامل مع طلبات CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
 
-  // وضع التحقق (Debug Mode)
   if (event.httpMethod === 'GET') {
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        message: "🔍 Debug Mode - Check FCM & Supabase Status",
+        message: "🔍 نظام إشعارات الصيد الموحد",
         status: "active",
         firebase: firebaseApp ? "initialized" : "failed",
         supabase: "connected",
-        timestamp: new Date().toISOString(),
-        endpoints: {
-          send_notification: "POST /send-notification",
-          health_check: "GET /"
-        }
+        supported_tables: [
+          'fishing_spots', 'fish_articles', 'bait_articles',
+          'bait_categories', 'gear_articles', 'gear_categories'
+        ],
+        timestamp: new Date().toISOString()
       })
     };
   }
 
-  // إرسال إشعار عند استقبال POST
   if (event.httpMethod === 'POST') {
     try {
       const body = JSON.parse(event.body || '{}');
-      const { record, action = 'create' } = body;
+      const { record, action = 'create', table } = body;
 
-      console.log('📨 Received:', { record, action });
+      console.log('📨 Received:', { table, action, record });
 
-      if (!firebaseApp) {
-        return {
-          statusCode: 500,
-          headers,
-          body: JSON.stringify({ 
-            error: 'Firebase not initialized',
-            debug: 'Check Firebase credentials in Netlify Environment Variables'
-          })
-        };
-      }
+      if (!firebaseApp) throw new Error('Firebase not initialized');
+      if (!record) throw new Error('Missing record data');
+      if (!table) throw new Error('Missing table name');
 
-      if (!record) {
-        return {
-          statusCode: 400,
-          headers,
-          body: JSON.stringify({ 
-            error: 'Missing record data',
-            details: 'Please provide record object in request body'
-          })
-        };
-      }
+      const config = await buildNotification(table, action, record);
 
-      // 🔄 جلب بيانات المستخدم من Supabase
-      let userName = 'مستخدم مجهول';
-      let userAvatarUrl = null;
-      let notificationTitle = '🎣 موقع صيد جديد!';
-      let notificationBody = '';
-
-      try {
-        if (record.user_id) {
-          const { data: user, error: userError } = await supabase
-            .from('users')
-            .select('name, avatar_url')
-            .eq('id', record.user_id)
-            .single();
-
-          if (!userError && user) {
-            userName = user.name || 'مستخدم مجهول';
-            userAvatarUrl = user.avatar_url;
-          }
-        }
-
-        // بناء نص الإشعار بناءً على نوع الإجراء
-        switch (action) {
-          case 'create':
-            notificationTitle = '📍 موقع صيد جديد!';
-            notificationBody = `تمت إضافة موقع جديد\nمن قبل: ${userName}\nفي مدينة: ${record.city || 'غير محددة'}\nاسم الموقع: ${record.name}\nوصف الموقع: ${record.description || 'لا يوجد وصف'}`;
-            break;
-          
-          case 'update':
-            notificationTitle = '✏️ تم تحديث موقع الصيد';
-            notificationBody = `تم تحديث موقع الصيد\nمن قبل: ${userName}\nالمكان: ${record.name}\nالمدينة: ${record.city || 'غير محددة'}`;
-            break;
-          
-          case 'delete':
-            notificationTitle = '🗑️ تم حذف موقع الصيد';
-            notificationBody = `تم حذف موقع الصيد\nمن قبل: ${userName}\nالمكان: ${record.name}`;
-            break;
-          
-          default:
-            notificationTitle = '📍 موقع صيد جديد!';
-            notificationBody = `تمت إضافة موقع جديد\nمن قبل: ${userName}\nفي مدينة: ${record.city || 'غير محددة'}\nاسم الموقع: ${record.name}`;
-        }
-
-      } catch (supabaseError) {
-        console.warn('⚠️ Supabase user fetch failed, using default data:', supabaseError.message);
-        notificationBody = `تمت إضافة موقع جديد\nاسم الموقع: ${record.name}\nالمدينة: ${record.city || 'غير محددة'}`;
-      }
-
-      // تحديد الصورة
-      const imageUrl = record.image_url || userAvatarUrl || 'https://via.placeholder.com/400x200/4F46E5/FFFFFF?text=🎣+موقع+صيد';
-
-      // رسالة الإشعار المحسنة
-      const topicMessage = {
-        topic: 'new_fishing_spots',
+      const message = {
+        topic: config.topic,
         notification: {
-          title: notificationTitle,
-          body: notificationBody,
-          image: imageUrl
+          title: config.title,
+          body: config.body,
+          image: config.image
         },
         data: {
-          spot_id: record.id?.toString() || '1',
-          spot_name: record.name,
-          city: record.city || 'غير محدد',
-          user_name: userName,
+          table: table,
           action: action,
-          type: 'fishing_spot_' + action,
-          image_url: imageUrl,
+          item_id: record.id?.toString() || '1',
+          item_name: record.name || record.title_ar || record.name_ar || 'غير محدد',
+          image_url: config.image,
           timestamp: new Date().toISOString()
         },
         android: {
           priority: 'high',
           notification: {
             sound: 'default',
-            channel_id: 'fishing_spots_channel'
+            channel_id: 'fishing_app_channel'
           }
         },
         apns: {
@@ -184,70 +252,43 @@ exports.handler = async (event, context) => {
               'mutable-content': 1
             }
           },
-          fcm_options: {
-            image: imageUrl
-          }
-        },
-        webpush: {
-          headers: {
-            image: imageUrl
-          }
+          fcm_options: { image: config.image }
         }
       };
 
-      console.log('📤 Sending notification to topic: new_fishing_spots');
-      const topicResponse = await admin.messaging().send(topicMessage);
-      console.log('✅ Notification sent successfully:', topicResponse);
+      console.log(`📤 Sending ${action} notification for ${table}`);
+      const response = await admin.messaging().send(message);
+      console.log('✅ Notification sent:', response);
 
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           success: true,
-          message: '✅ Notification sent successfully',
-          notification_id: topicResponse,
-          spot: {
-            id: record.id,
-            name: record.name,
-            city: record.city
-          },
-          user: {
-            name: userName,
-            avatar: userAvatarUrl ? true : false
-          },
+          message: `✅ Notification sent for ${table}`,
+          notification_id: response,
+          table: table,
           action: action,
-          debug: {
-            topic: 'new_fishing_spots',
-            timestamp: new Date().toISOString(),
-            image_used: imageUrl
-          }
+          timestamp: new Date().toISOString()
         })
       };
 
     } catch (error) {
-      console.error('❌ FCM Error:', error);
-      
+      console.error('❌ Notification Error:', error);
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           success: false,
-          error: error.message,
-          code: error.code,
-          details: 'Check FCM configuration and topic subscriptions',
-          timestamp: new Date().toISOString()
+          error: error.message
         })
       };
     }
   }
 
-  // رفض أي طريقة غير مدعومة
   return {
     statusCode: 405,
     headers,
-    body: JSON.stringify({ 
-      error: 'Method not allowed',
-      allowed_methods: ['GET', 'POST', 'OPTIONS']
-    })
+    body: JSON.stringify({ error: 'Method not allowed' })
   };
 };
